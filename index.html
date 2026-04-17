@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NEONDRIVE - Cyberpunk Highway</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;500;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+        
+        :root {
+            --cyan: #00f5ff;
+            --magenta: #ff00aa;
+            --yellow: #ffee00;
+            --orange: #ff6600;
+            --dark-bg: #0a0a0f;
+            --panel-bg: rgba(10, 10, 20, 0.85);
+        }
+        
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: var(--dark-bg);
+            overflow: hidden;
+            color: #fff;
+            touch-action: none;
+        }
+        
+        #game-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        
+        .hidden { display: none !important; }
+        
+        /* Loading Screen */
+        #loading-screen {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg, #0a0a0f 0%, #1a0a20 50%, #0a0a0f 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .loader {
+            text-align: center;
+        }
+        
+        .loader-text {
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(2rem, 8vw, 5rem);
+            font-weight: 900;
+            background: linear-gradient(90deg, var(--cyan), var(--magenta), var(--cyan));
+            background-size: 200% 100%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: textShine 2s linear infinite;
+            letter-spacing: 0.3em;
+            margin-bottom: 2rem;
+        }
+        
+        @keyframes textShine {
+            to { background-position: 200% center; }
+        }
+        
+        .loader-bar {
+            width: 300px;
+            max-width: 80vw;
+            height: 4px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        
+        .loader-progress {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--cyan), var(--magenta));
+            animation: loadProgress 2s ease-out forwards;
+            box-shadow: 0 0 20px var(--cyan);
+        }
+        
+        @keyframes loadProgress {
+            to { width: 100%; }
+        }
+        
+        /* Main Menu */
+        #main-menu {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            background: transparent;
+        }
+        
+        .game-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(3rem, 12vw, 8rem);
+            font-weight: 900;
+            letter-spacing: 0.2em;
+            color: #fff;
+            text-shadow: 
+                0 0 10px var(--cyan),
+                0 0 30px var(--cyan),
+                0 0 60px var(--magenta);
+            margin-bottom: 0.5rem;
+        }
+        
+        .subtitle {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: clamp(1rem, 3vw, 1.5rem);
+            letter-spacing: 0.5em;
+            color: var(--cyan);
+            margin-bottom: 3rem;
+            text-transform: uppercase;
+        }
+        
+        .menu-btn {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem;
+            font-weight: 700;
+            padding: 1rem 3rem;
+            margin: 0.5rem;
+            background: transparent;
+            border: 2px solid var(--cyan);
+            color: var(--cyan);
+            cursor: pointer;
+            letter-spacing: 0.2em;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            min-width: 280px;
+        }
+        
+        .menu-btn::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: var(--cyan);
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            z-index: -1;
+        }
+        
+        .menu-btn:hover, .menu-btn:active {
+            color: var(--dark-bg);
+            box-shadow: 0 0 30px var(--cyan);
+        }
+        
+        .menu-btn:hover::before, .menu-btn:active::before {
+            transform: translateX(0);
+        }
+        
+        /* Settings Panel */
+        #settings-panel, #pause-menu {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            background: rgba(10, 10, 15, 0.95);
+        }
+        
+        #settings-panel h2, #pause-menu h2 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.5rem;
+            letter-spacing: 0.3em;
+            color: var(--cyan);
+            margin-bottom: 2rem;
+            text-shadow: 0 0 20px var(--cyan);
+        }
+        
+        .setting-group {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 320px;
+            max-width: 90vw;
+            margin: 0.8rem 0;
+            padding: 1rem;
+            background: rgba(255,255,255,0.05);
+            border-left: 3px solid var(--cyan);
+        }
+        
+        .setting-group label {
+            font-size: 1rem;
+            letter-spacing: 0.1em;
+            color: #aaa;
+        }
+        
+        .setting-group select, .setting-group input[type="range"] {
+            background: rgba(0,0,0,0.5);
+            border: 1px solid var(--cyan);
+            color: var(--cyan);
+            padding: 0.5rem;
+            font-family: 'Rajdhani', sans-serif;
+            cursor: pointer;
+        }
+        
+        .setting-group input[type="checkbox"] {
+            width: 24px;
+            height: 24px;
+            accent-color: var(--cyan);
+            cursor: pointer;
+        }
+        
+        .setting-group input[type="range"] {
+            width: 120px;
+            accent-color: var(--cyan);
+        }
+        
+        /* Game UI */
+        #game-ui {
+            position: fixed;
+            inset: 0;
+            z-index: 50;
+            pointer-events: none;
+        }
+        
+        .speed-display {
+            position: absolute;
+            bottom: 40px;
+            right: 40px;
+            text-align: right;
+        }
+        
+        #speed-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(3rem, 8vw, 5rem);
+            font-weight: 900;
+            color: var(--cyan);
+            text-shadow: 0 0 20px var(--cyan);
+            line-height: 1;
+        }
+        
+        .speed-display .unit {
+            font-size: 1.2rem;
+            color: #666;
+            letter-spacing: 0.2em;
+        }
+        
+        .distance-display {
+            position: absolute;
+            top: 40px;
+            right: 40px;
+            text-align: right;
+        }
+        
+        #distance-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(1.5rem, 4vw, 2rem);
+            font-weight: 700;
+            color: var(--magenta);
+            text-shadow: 0 0 15px var(--magenta);
+        }
+        
+        .distance-display .unit {
+            font-size: 0.9rem;
+            color: #666;
+            letter-spacing: 0.1em;
+        }
+        
+        .controls-hint {
+            position: absolute;
+            bottom: 40px;
+            left: 40px;
+            font-size: 0.8rem;
+            color: #444;
+            letter-spacing: 0.1em;
+            line-height: 1.8;
+        }
+        
+        .controls-hint span {
+            color: var(--cyan);
+        }
+        
+        /* Boost indicator */
+        .boost-bar {
+            position: absolute;
+            bottom: 120px;
+            right: 40px;
+            width: 150px;
+        }
+        
+        .boost-label {
+            font-size: 0.7rem;
+            color: #666;
+            letter-spacing: 0.2em;
+            margin-bottom: 5px;
+        }
+        
+        .boost-track {
+            height: 6px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        
+        .boost-fill {
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(90deg, var(--orange), var(--yellow));
+            box-shadow: 0 0 10px var(--orange);
+            transition: width 0.1s ease;
+        }
+        
+        /* Camera mode indicator */
+        .camera-mode {
+            position: absolute;
+            top: 40px;
+            left: 40px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.8rem;
+            color: var(--cyan);
+            letter-spacing: 0.2em;
+            opacity: 0.7;
+        }
+        
+        /* Pause Button (for touch) */
+        #pause-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 50px;
+            height: 50px;
+            background: rgba(0, 245, 255, 0.1);
+            border: 2px solid var(--cyan);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: auto;
+            z-index: 60;
+        }
+        
+        #pause-btn svg {
+            width: 24px;
+            height: 24px;
+            fill: var(--cyan);
+        }
+        
+        /* Touch Controls Container */
+        #touch-controls {
+            position: fixed;
+            inset: 0;
+            z-index: 55;
+            pointer-events: none;
+            display: none;
+        }
+        
+        .touch-btn {
+            position: absolute;
+            background: rgba(0, 245, 255, 0.15);
+            border: 2px solid rgba(0, 245, 255, 0.5);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--cyan);
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            pointer-events: auto;
+            transition: background 0.1s, transform 0.1s;
+        }
+        
+        .touch-btn:active, .touch-btn.active {
+            background: rgba(0, 245, 255, 0.4);
+            transform: scale(0.95);
+            border-color: var(--cyan);
+        }
+        
+        /* Steering Wheel Zone */
+        .steering-zone {
+            position: absolute;
+            bottom: 30px;
+            left: 20px;
+            width: 160px;
+            height: 160px;
+            pointer-events: auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .steer-btn {
+            width: 75px;
+            height: 140px;
+            border-radius: 20px;
+            background: linear-gradient(180deg, rgba(0, 245, 255, 0.1), rgba(0, 245, 255, 0.05));
+            border: 2px solid rgba(0, 245, 255, 0.3);
+            font-size: 2rem;
+        }
+        
+        /* Pedals Zone */
+        .pedals-zone {
+            position: absolute;
+            bottom: 30px;
+            right: 20px;
+            width: 160px;
+            height: 160px;
+            pointer-events: auto;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        
+        .pedal-btn {
+            width: 100%;
+            height: 75px;
+            border-radius: 20px;
+            font-size: 1.2rem;
+        }
+        
+        #btn-brake {
+            background: linear-gradient(180deg, rgba(255, 0, 170, 0.1), rgba(255, 0, 170, 0.05));
+            border-color: rgba(255, 0, 170, 0.4);
+            color: var(--magenta);
+        }
+        
+        #btn-brake:active, #btn-brake.active {
+            background: rgba(255, 0, 170, 0.4);
+            border-color: var(--magenta);
+        }
+        
+        /* Boost Button */
+        #btn-boost {
+            position: absolute;
+            bottom: 220px;
+            right: 30px;
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 102, 0, 0.15);
+            border-color: rgba(255, 102, 0, 0.5);
+            color: var(--orange);
+            font-size: 0.8rem;
+            border-radius: 50%;
+        }
+        
+        #btn-boost:active, #btn-boost.active {
+            background: rgba(255, 102, 0, 0.5);
+            border-color: var(--orange);
+        }
+        
+        /* Camera Button */
+        #btn-camera {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            border-radius: 8px;
+            font-size: 1.2rem;
+            pointer-events: auto;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .controls-hint { display: none; }
+            .speed-display { right: 20px; bottom: 20px; }
+            .distance-display { right: 20px; top: 20px; }
+            .boost-bar { right: 20px; bottom: 200px; }
+            .camera-mode { top: 20px; left: 80px; font-size: 0.7rem; }
+            
+            /* Show touch controls on touch devices */
+            .is-touch #touch-controls { display: block; }
+            .is-touch #pause-btn { display: flex; }
+            .is-touch .boost-bar { bottom: 220px; }
+            
+            /* Adjust UI for touch */
+            .is-touch .distance-display {
+                top: 20px;
+                right: 80px; /* Make space for camera button */
+            }
+        }
+        
+        /* Larger touch controls for bigger phones */
+        @media (min-width: 500px) and (max-width: 768px) {
+            .steering-zone { width: 180px; height: 180px; }
+            .steer-btn { width: 85px; height: 160px; }
+            .pedals-zone { width: 180px; height: 180px; }
+            .pedal-btn { height: 85px; }
+        }
+        
+        /* Hide keyboard hints on touch devices */
+        .is-touch .controls-hint { display: none; }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+        <div class="loader">
+            <div class="loader-text">NEONDRIVE</div>
+            <div class="loader-bar">
+                <div class="loader-progress"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Menu -->
+    <div id="main-menu" class="hidden">
+        <h1 class="game-title">NEONDRIVE</h1>
+        <p class="subtitle">Cyberpunk Highway</p>
+        <button id="start-btn" class="menu-btn">START DRIVE</button>
+        <button id="settings-btn" class="menu-btn">SETTINGS</button>
+    </div>
+
+    <!-- Settings Panel -->
+    <div id="settings-panel" class="hidden">
+        <h2>SETTINGS</h2>
+        <div class="setting-group">
+            <label>Quality</label>
+            <select id="quality-select">
+                <option value="low">Low</option>
+                <option value="medium" selected>Medium</option>
+                <option value="high">High</option>
+            </select>
+        </div>
+        <div class="setting-group">
+            <label>Fog</label>
+            <input type="checkbox" id="fog-toggle" checked>
+        </div>
+        <div class="setting-group">
+            <label>Bloom</label>
+            <input type="checkbox" id="bloom-toggle" checked>
+        </div>
+        <div class="setting-group">
+            <label>Light Trails</label>
+            <input type="checkbox" id="trails-toggle" checked>
+        </div>
+        <div class="setting-group">
+            <label>Light Intensity</label>
+            <input type="range" id="light-intensity" min="0.5" max="2" step="0.1" value="1">
+        </div>
+        <button id="settings-back" class="menu-btn">BACK</button>
+    </div>
+
+    <!-- Pause Menu -->
+    <div id="pause-menu" class="hidden">
+        <h2>PAUSED</h2>
+        <button id="resume-btn" class="menu-btn">RESUME</button>
+        <button id="quit-btn" class="menu-btn">MAIN MENU</button>
+    </div>
+
+    <!-- Game UI -->
+    <div id="game-ui" class="hidden">
+        <div class="camera-mode">
+            <span id="camera-mode-text">CHASE CAM</span>
+        </div>
+        
+        <!-- Pause Button (visible on touch) -->
+        <div id="pause-btn" class="hidden">
+            <svg viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+        </div>
+        
+        <div class="distance-display">
+            <span id="distance-value">0.00</span>
+            <span class="unit">KM</span>
+        </div>
+        <div class="speed-display">
+            <span id="speed-value">0</span>
+            <span class="unit">KM/H</span>
+        </div>
+        <div class="boost-bar">
+            <div class="boost-label">BOOST</div>
+            <div class="boost-track">
+                <div class="boost-fill" id="boost-fill"></div>
+            </div>
+        </div>
+        <div class="controls-hint">
+            <span>W/S</span> Accel/Brake &nbsp; <span>A/D</span> Steer<br>
+            <span>SHIFT</span> Boost &nbsp; <span>SPACE</span> Handbrake<br>
+            <span>C</span> Camera &nbsp; <span>ESC</span> Pause
+        </div>
+    </div>
+
+    <!-- Touch Controls -->
+    <div id="touch-controls">
+        <!-- Pause Button -->
+        <div id="touch-pause" class="touch-btn" style="top: 20px; left: 20px; width: 50px; height: 50px; border-radius: 8px;">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+        </div>
+        
+        <!-- Camera Toggle -->
+        <div id="touch-camera" class="touch-btn" style="top: 20px; right: 20px; width: 50px; height: 50px; border-radius: 8px;">
+            CAM
+        </div>
+
+        <!-- Left Side: Steering -->
+        <div class="steering-zone">
+            <div id="touch-left" class="touch-btn steer-btn">◀</div>
+            <div id="touch-right" class="touch-btn steer-btn">▶</div>
+        </div>
+
+        <!-- Right Side: Pedals -->
+        <div class="pedals-zone">
+            <div id="btn-brake" class="touch-btn pedal-btn">BRAKE</div>
+            <div id="btn-gas" class="touch-btn pedal-btn">GAS</div>
+        </div>
+
+        <!-- Boost -->
+        <div id="btn-boost" class="touch-btn">BOOST</div>
+    </div>
+
+    <canvas id="game-canvas"></canvas>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+        // ============================================
+        // GAME CONFIGURATION
+        // ============================================
+        const CONFIG = {
+            road: {
+                segmentLength: 20,
+                segmentsVisible: 150,
+                roadWidth: 18,
+ 
